@@ -26,7 +26,7 @@ jobs:
         run: echo "Hi, I am from COSC 1209 class"
 
       - name: Grant execute permission to Gradle wrapper (Linux/macOS only)
-        if: ${{ runner.os != 'Windows' }}
+        if: runner.os != 'Windows'
         run: chmod +x ./gradlew
 
       - name: Setup Java
@@ -43,28 +43,38 @@ jobs:
       - name: Build the JAR
         run: |
           ./gradlew clean build
-        shell: ${{ matrix.os == 'windows-latest' && 'pwsh' || 'bash' }}
+        shell: bash
+        if: runner.os != 'Windows'
+      
+      - name: Build the JAR (Windows)
+        run: |
+          .\gradlew.bat clean build
+        shell: pwsh
+        if: runner.os == 'Windows'
 
       - name: Verify JAR file location
         run: |
-          if (${{ runner.os == 'Windows' }}) {
-            dir build\libs
-          } else {
-            ls -l build/libs
-          }
-        shell: ${{ matrix.os == 'windows-latest' && 'pwsh' || 'bash' }}
+          ls -l build/libs
+        if: runner.os != 'Windows'
+      - name: Verify JAR file location (Windows)
+        run: |
+          dir build\libs
+        shell: pwsh
+        if: runner.os == 'Windows'
 
       - name: Get JAR filename
         id: get_jar
         run: |
-          if (${{ runner.os == 'Windows' }}) {
-            $jarName = Get-ChildItem build\libs\*.jar | Select-Object -ExpandProperty Name
-            echo "JAR_NAME=$jarName" | Out-File -FilePath $env:GITHUB_ENV -Append
-          } else {
-            JAR_NAME=$(ls build/libs/*.jar | head -n 1 | xargs -n 1 basename)
-            echo "JAR_NAME=$JAR_NAME" >> $GITHUB_ENV
-          }
-        shell: ${{ matrix.os == 'windows-latest' && 'pwsh' || 'bash' }}
+          JAR_NAME=$(ls build/libs/*.jar | head -n 1 | xargs -n 1 basename)
+          echo "JAR_NAME=$JAR_NAME" >> $GITHUB_ENV
+        if: runner.os != 'Windows'
+      - name: Get JAR filename (Windows)
+        id: get_jar_windows
+        run: |
+          $jarName = Get-ChildItem build\libs\*.jar | Select-Object -ExpandProperty Name
+          echo "JAR_NAME=$jarName" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: pwsh
+        if: runner.os == 'Windows'
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
