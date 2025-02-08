@@ -26,7 +26,7 @@ jobs:
         run: echo "Hi, I am from COSC 1209 class"
 
       - name: Grant execute permission to Gradle wrapper (Linux/macOS only)
-        if: runner.os != 'Windows'
+        if: ${{ runner.os != 'Windows' }}
         run: chmod +x ./gradlew
 
       - name: Setup Java
@@ -41,7 +41,7 @@ jobs:
           gradle-version: 7.6
 
       - name: Build the JAR
-        run: ./gradlew clean bootJar
+        run: ./gradlew clean build
 
       - name: Verify JAR file location
         run: |
@@ -55,9 +55,19 @@ jobs:
         id: get_jar
         run: |
           if [ "${{ runner.os }}" == "Windows" ]; then
-            FOR /F "delims=" %G IN ('dir /B build\libs\*.jar') DO echo "JAR_NAME=%G" >> $env:GITHUB_ENV
+            $jar = Get-ChildItem -Path build\libs\*.jar | Select-Object -First 1
+            if ($jar -eq $null) {
+              Write-Host "No JAR file found; exiting..."
+              exit 1
+            }
+            echo "JAR_NAME=$($jar.Name)" >> $env:GITHUB_ENV
           else
-            echo "JAR_NAME=$(ls build/libs/*.jar | head -n 1 | xargs -n 1 basename)" >> $GITHUB_ENV
+            if [ -z "$(ls build/libs/*.jar 2>/dev/null)" ]; then
+              echo "No JAR file found; exiting..."
+              exit 1
+            fi
+            JAR_NAME=$(ls build/libs/*.jar | head -n 1 | xargs -n 1 basename)
+            echo "JAR_NAME=$JAR_NAME" >> $GITHUB_ENV
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
