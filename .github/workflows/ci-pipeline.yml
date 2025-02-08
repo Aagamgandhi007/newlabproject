@@ -25,19 +25,16 @@ jobs:
       - name: Display Class Info
         run: echo "Hi, I am from COSC 1209 class"
 
-      # Ensure Gradle wrapper is executable (for non-Windows only)
-      - name: Grant execute permission to Gradle wrapper
+      - name: Grant execute permission to Gradle wrapper (Linux/macOS only)
         if: ${{ runner.os != 'Windows' }}
         run: chmod +x ./gradlew
 
-      # Setup Java environment
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # Use Gradle Build Action for cross-platform support
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
         with:
@@ -45,27 +42,30 @@ jobs:
 
       - name: Build the JAR
         run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            ./gradlew.bat clean build
-          else
-            ./gradlew clean build
-          fi
+          ./gradlew clean build
+        shell: ${{ matrix.os == 'windows-latest' && 'pwsh' || 'bash' }}
 
-      # Verify the JAR file creation
       - name: Verify JAR file location
-        run: ls -l build/libs
+        run: |
+          if (${{ runner.os == 'Windows' }}) {
+            dir build\libs
+          } else {
+            ls -l build/libs
+          }
+        shell: ${{ matrix.os == 'windows-latest' && 'pwsh' || 'bash' }}
 
       - name: Get JAR filename
         id: get_jar
         run: |
-          if [ -z "$(ls build/libs/*.jar 2>/dev/null)" ]; then
-            echo "No JAR file found; exiting..."
-            exit 1
-          fi
-          JAR_NAME=$(ls build/libs/*.jar | head -n 1 | xargs -n 1 basename)
-          echo "JAR_NAME=$JAR_NAME" >> $GITHUB_ENV
+          if (${{ runner.os == 'Windows' }}) {
+            $jarName = Get-ChildItem build\libs\*.jar | Select-Object -ExpandProperty Name
+            echo "JAR_NAME=$jarName" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            JAR_NAME=$(ls build/libs/*.jar | head -n 1 | xargs -n 1 basename)
+            echo "JAR_NAME=$JAR_NAME" >> $GITHUB_ENV
+          }
+        shell: ${{ matrix.os == 'windows-latest' && 'pwsh' || 'bash' }}
 
-      # Upload the generated JAR as an artifact
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
